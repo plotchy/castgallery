@@ -6,7 +6,17 @@ function tryFormatTime(iso?: string) {
   if (!iso) return '';
   try {
     const d = new Date(iso);
-    return d.toLocaleString();
+    // Display in Pacific Time to match time-based filters
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    return `${fmt.format(d)} PT`;
   } catch {
     return iso ?? '';
   }

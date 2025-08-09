@@ -22,6 +22,13 @@ export async function GET(req: NextRequest) {
     | 'likes'
     | 'replies'
     | undefined;
+  const timeBucket = (searchParams.get('timeBucket') ?? undefined) as 'midnight' | 'morning' | 'lunch' | undefined;
+  const timePattern = (searchParams.get('timePattern') ?? undefined) as
+    | 'topOfHour'
+    | 'buzzerBeater'
+    | 'elevenEleven'
+    | 'duplicities'
+    | undefined;
 
   const isQuote = isQuoteParam !== null ? isQuoteParam === '1' : undefined;
   const hasImage = hasImageParam !== null ? hasImageParam === '1' : undefined;
@@ -44,6 +51,8 @@ export async function GET(req: NextRequest) {
     minLikes: minLikes ? Number(minLikes) : undefined,
     minReplies: minReplies ? Number(minReplies) : undefined,
     sortBy,
+    timeBucket,
+    timePattern,
   });
   return Response.json(data, { status: 200 });
 }

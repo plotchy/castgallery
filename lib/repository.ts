@@ -20,6 +20,9 @@ export type SearchFilters = {
   minReplies?: number;
   // Sorting
   sortBy?: 'newest' | 'likes' | 'replies';
+  // Time-based collections (Pacific Time)
+  timeBucket?: 'midnight' | 'morning' | 'lunch';
+  timePattern?: 'topOfHour' | 'buzzerBeater' | 'elevenEleven' | 'duplicities';
 };
 
 export type SearchResponse = {
@@ -210,10 +213,46 @@ class InMemoryRepository {
         const replies = cast.replies?.count ?? 0;
         if (replies < f.minReplies) return false;
       }
-      // minRecasts removed per spec
+      // Time-based collections (PT)
+      if (f.timeBucket || f.timePattern) {
+        const ts = cast.timestamp;
+        if (!ts) return false;
+        const { hour24, minute, hour12 } = this.getPacificTimeParts(ts);
+        // Buckets
+        if (f.timeBucket === 'midnight' && hour24 !== 0) return false;
+        if (f.timeBucket === 'morning' && !(hour24 >= 6 && hour24 <= 10)) return false;
+        if (f.timeBucket === 'lunch' && hour24 !== 12) return false;
+
+        // Patterns
+        if (f.timePattern === 'topOfHour' && minute !== 0) return false;
+        if (f.timePattern === 'buzzerBeater' && minute !== 59) return false;
+        if (f.timePattern === 'elevenEleven' && !(hour12 === 11 && minute === 11)) return false;
+        if (f.timePattern === 'duplicities') {
+          // e.g., 2:22, 3:33, 4:44, 5:55 (exclude 11:11 which is handled above)
+          const dupMinute = hour12 * 11; // 1->11, 2->22, ... 10->110 (won't match)
+          const isDup = hour12 !== 11 && dupMinute < 60 && minute === dupMinute;
+          if (!isDup) return false;
+        }
+      }
 
       return true;
     });
+  }
+
+  private getPacificTimeParts(iso: string): { hour24: number; hour12: number; minute: number } {
+    // Use Intl to avoid dependencies
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const parts = fmt.formatToParts(new Date(iso));
+    const h = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+    const m = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
+    const hour24 = h;
+    const hour12 = ((hour24 + 11) % 12) + 1; // 1..12
+    return { hour24, hour12, minute: m };
   }
 
   private includesInOriginalText(cast: CompactCast, qLower: string): boolean {

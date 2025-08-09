@@ -30,6 +30,10 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<'newest' | 'likes' | 'replies'>('newest');
   const [minLikes, setMinLikes] = useState<number | null>(null);
   const [minReplies, setMinReplies] = useState<number | null>(null);
+  const [timeBucket, setTimeBucket] = useState<'midnight' | 'morning' | 'lunch' | null>(null);
+  const [timePattern, setTimePattern] = useState<'topOfHour' | 'buzzerBeater' | 'elevenEleven' | 'duplicities' | null>(
+    null
+  );
   const [topEmojis, setTopEmojis] = useState<{ emoji: string; count: number }[]>([]);
   const [suggestions, setSuggestions] = useState<{ cast: Cast; score: number }[]>([]);
 
@@ -46,9 +50,11 @@ export default function Home() {
     if (sortBy && sortBy !== 'newest') usp.set('sortBy', sortBy);
     if (minLikes !== null) usp.set('minLikes', String(minLikes));
     if (minReplies !== null) usp.set('minReplies', String(minReplies));
+    if (timeBucket) usp.set('timeBucket', timeBucket);
+    if (timePattern) usp.set('timePattern', timePattern);
     usp.set('limit', '50');
     return usp.toString();
-  }, [query, isQuote, hasImage, hasLink, selectedEmoji, oneWord, longform, sortBy, minLikes, minReplies]);
+  }, [query, isQuote, hasImage, hasLink, selectedEmoji, oneWord, longform, sortBy, minLikes, minReplies, timeBucket, timePattern]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +87,7 @@ export default function Home() {
     longform ||
     sortBy !== 'newest' ||
     minLikes !== null ||
-    minReplies !== null;
+    minReplies !== null || timeBucket !== null || timePattern !== null;
 
   return (
     <div className="min-h-screen p-4 sm:p-6">
@@ -134,6 +140,31 @@ export default function Home() {
                 label: 'insane',
                 active: query === 'insane',
                 onClick: () => setQuery((q) => (q === 'insane' ? '' : 'insane')),
+              },
+              {
+                label: 'wow',
+                active: query === 'wow',
+                onClick: () => setQuery((q) => (q === 'wow' ? '' : 'wow')),
+              },
+              {
+                label: 'welcome',
+                active: query === 'welcome',
+                onClick: () => setQuery((q) => (q === 'welcome' ? '' : 'welcome')),
+              },
+              {
+                label: 'gm',
+                active: query === 'gm',
+                onClick: () => setQuery((q) => (q === 'gm' ? '' : 'gm')),
+              },
+              {
+                label: 'excited',
+                active: query === 'excited',
+                onClick: () => setQuery((q) => (q === 'excited' ? '' : 'excited')),
+              },
+              {
+                label: '$',
+                active: query === '$',
+                onClick: () => setQuery((q) => (q === '$' ? '' : '$')),
               },
             ];
             return buttons.map((b) => (
@@ -217,6 +248,49 @@ export default function Home() {
           {/* Removed Top Recasts quick pick */}
         </div>
 
+        {/* Time-based collections (Pacific Time) */}
+        <div className="flex flex-wrap gap-2 mb-3 text-sm">
+          {(
+            [
+              { key: 'midnight', label: 'Midnight hour' },
+              { key: 'morning', label: 'Morning grind' },
+              { key: 'lunch', label: 'Lunch casts' },
+            ] as const
+          ).map((b) => (
+            <button
+              key={b.key}
+              onClick={() => setTimeBucket((curr) => (curr === b.key ? null : b.key))}
+              className={`px-3 py-1 rounded-full border ${timeBucket === b.key ? 'bg-foreground text-background' : ''}`}
+              aria-pressed={timeBucket === b.key}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Time patterns */}
+        <div className="flex flex-wrap gap-2 mb-3 text-sm">
+          {(
+            [
+              { key: 'topOfHour', label: 'Top of hour :00' },
+              { key: 'buzzerBeater', label: 'Buzzer beater :59' },
+              { key: 'elevenEleven', label: '11:11 club' },
+              { key: 'duplicities', label: '2:22 • 3:33 • 4:44 • 5:55' },
+            ] as const
+          ).map((b) => (
+            <button
+              key={b.key}
+              onClick={() => setTimePattern((curr) => (curr === b.key ? null : b.key))}
+              className={`px-3 py-1 rounded-full border ${
+                timePattern === b.key ? 'bg-foreground text-background' : ''
+              }`}
+              aria-pressed={timePattern === b.key}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+
         {/* Emoji suggestions */}
         <div className="mb-3">
           <div className="text-sm mb-1">Top emojis</div>
@@ -269,6 +343,16 @@ export default function Home() {
             {minReplies !== null && (
               <button className="px-3 py-1 rounded-full border" onClick={() => setMinReplies(null)}>
                 💬 ≥ {minReplies} ✕
+              </button>
+            )}
+            {timeBucket && (
+              <button className="px-3 py-1 rounded-full border" onClick={() => setTimeBucket(null)}>
+                Time: {timeBucket} ✕
+              </button>
+            )}
+            {timePattern && (
+              <button className="px-3 py-1 rounded-full border" onClick={() => setTimePattern(null)}>
+                Pattern ✕
               </button>
             )}
             {/* Removed recasts chip */}
