@@ -1,5 +1,5 @@
 "use client";
-import type { CompactCast, Embed, CompactEmbeddedCast } from '@/app/compact_cast_interface';
+import type { CompactCast, Embed, CompactEmbeddedCast, MinimalAuthor } from '@/app/compact_cast_interface';
 import { PRIMARY_AUTHOR } from '@/lib/constants';
 
 function tryFormatTime(iso?: string) {
@@ -48,13 +48,34 @@ function isLikelyImageUrl(url: string): boolean {
 
 function EmbeddedCast({ cast }: { cast: CompactEmbeddedCast }) {
   const author = cast.author ?? PRIMARY_AUTHOR;
+  const handle = author.username ?? 'dwr.eth';
+  const castUrl = cast.hash ? `https://farcaster.xyz/${handle}/${String(cast.hash).slice(0, 10)}` : null;
+  const profileUrl = author.username
+    ? `https://farcaster.xyz/${author.username}`
+    : author.fid
+    ? `https://farcaster.xyz/users/${author.fid}`
+    : null;
   return (
-    <div className="border rounded p-3 bg-black/5 dark:bg-white/5 overflow-hidden max-w-full">
+    <div
+      className="border rounded p-3 bg-black/5 dark:bg-white/5 overflow-hidden max-w-full cursor-pointer"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (castUrl) window.open(castUrl, '_blank');
+      }}
+    >
       <div className="flex items-center gap-2 mb-2">
-        <Avatar url={author.pfp_url} alt={author.display_name ?? author.username ?? 'author'} size={20} />
-        <div className="text-xs">
-          <div className="font-medium">{author.display_name ?? author.username ?? 'Unknown'}</div>
-          {author.username && <div className="opacity-70">@{author.username}</div>}
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (profileUrl) window.open(profileUrl, '_blank');
+          }}
+        >
+          <Avatar url={author.pfp_url} alt={author.display_name ?? author.username ?? 'author'} size={20} />
+          <div className="text-xs">
+            <div className="font-medium">{author.display_name ?? author.username ?? 'Unknown'}</div>
+            {author.username && <div className="opacity-70">@{author.username}</div>}
+          </div>
         </div>
       </div>
       {cast.text && <div className="whitespace-pre-wrap break-words text-sm mb-2">{cast.text}</div>}
@@ -81,6 +102,7 @@ function RenderEmbed({ embed }: { embed: Embed }) {
         target="_blank"
         rel="noopener noreferrer"
         className="text-blue-600 hover:underline break-all"
+        onClick={(e) => e.stopPropagation()}
       >
         {url}
       </a>
@@ -97,21 +119,35 @@ function RenderEmbed({ embed }: { embed: Embed }) {
 
 export function CastCard({ cast }: { cast: CompactCast }) {
   const author = PRIMARY_AUTHOR; // dataset is Dan's top-level casts
-  const buildCastUrl = (hash?: string | null): string | null => {
+  const buildCastUrl = (hash?: string | null, byAuthor?: MinimalAuthor): string | null => {
     if (!hash) return null;
     const slug = String(hash).slice(0, 10);
-    const handle = author.username ?? 'dwr.eth';
+    const handle = byAuthor?.username ?? author.username ?? 'dwr.eth';
     return `https://farcaster.xyz/${handle}/${slug}`;
   };
   const castUrl = buildCastUrl(cast.hash);
+  const profileUrl = author.username ? `https://farcaster.xyz/${author.username}` : 'https://farcaster.xyz/dwr.eth';
 
   return (
-    <article className="border rounded p-3 overflow-hidden max-w-full">
+    <article
+      className="border rounded p-3 overflow-hidden max-w-full cursor-pointer"
+      onClick={() => {
+        if (castUrl) window.open(castUrl, '_blank');
+      }}
+    >
       <header className="flex items-center gap-2 mb-2">
-        <Avatar url={author.pfp_url} alt={author.display_name ?? author.username ?? 'author'} />
-        <div className="text-sm">
-          <div className="font-medium">{author.display_name ?? author.username}</div>
-          {author.username && <div className="opacity-70">@{author.username}</div>}
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (profileUrl) window.open(profileUrl, '_blank');
+          }}
+        >
+          <Avatar url={author.pfp_url} alt={author.display_name ?? author.username ?? 'author'} />
+          <div className="text-sm">
+            <div className="font-medium">{author.display_name ?? author.username}</div>
+            {author.username && <div className="opacity-70">@{author.username}</div>}
+          </div>
         </div>
         <div className="ml-auto text-xs opacity-70">{tryFormatTime(cast.timestamp)}</div>
       </header>
@@ -130,17 +166,6 @@ export function CastCard({ cast }: { cast: CompactCast }) {
         {typeof cast.reactions?.likes_count === 'number' && <span>❤ {cast.reactions?.likes_count}</span>}
         {typeof cast.reactions?.recasts_count === 'number' && <span>🔁 {cast.reactions?.recasts_count}</span>}
         {typeof cast.replies?.count === 'number' && <span>💬 {cast.replies?.count}</span>}
-        {castUrl && (
-          <a
-            href={castUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto underline hover:opacity-100 opacity-90"
-            title="Open cast"
-          >
-            Open ↗
-          </a>
-        )}
       </footer>
     </article>
   );

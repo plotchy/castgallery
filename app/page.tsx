@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
 import { CastCard } from '@/app/components/CastCard';
+import { HintBorder } from '@/app/components/HintBorder';
 import type { CompactCast } from '@/app/compact_cast_interface';
 
 type Cast = CompactCast;
@@ -36,6 +37,7 @@ export default function Home() {
   );
   const [topEmojis, setTopEmojis] = useState<{ emoji: string; count: number }[]>([]);
   const [suggestions, setSuggestions] = useState<{ cast: Cast; score: number }[]>([]);
+  const [hintTarget, setHintTarget] = useState<{ group: 'suggestions' | 'vibe' | 'sort' | 'timeBucket' | 'timePattern'; index: number } | null>(null);
 
   const params = useMemo(() => {
     const usp = new URLSearchParams();
@@ -75,6 +77,45 @@ export default function Home() {
   }, [params]);
 
   // Quick filter chip handler removed
+
+  // Idle hint scheduler: pick one random chip for 1s, 2s pause
+  useEffect(() => {
+    const noSelections =
+      !query && !selectedEmoji && !oneWord && !longform && sortBy === 'newest' && minLikes === null && minReplies === null && !timeBucket && !timePattern;
+    if (!noSelections) {
+      setHintTarget(null);
+      return;
+    }
+    let timeoutId: number | null = null;
+    const cycle = () => {
+      const suggestionCount = 13;
+      const groups: Array<{ g: 'suggestions' | 'vibe' | 'sort' | 'timeBucket' | 'timePattern'; n: number }> = [
+        { g: 'suggestions', n: suggestionCount },
+        { g: 'vibe', n: 2 },
+        { g: 'sort', n: 2 },
+        { g: 'timeBucket', n: 3 },
+        { g: 'timePattern', n: 4 },
+      ];
+      const total = groups.reduce((s, x) => s + x.n, 0);
+      const r = Math.floor(Math.random() * total);
+      let acc = 0;
+      for (const g of groups) {
+        if (r < acc + g.n) {
+          setHintTarget({ group: g.g, index: r - acc });
+          break;
+        }
+        acc += g.n;
+      }
+      timeoutId = window.setTimeout(() => {
+        setHintTarget(null);
+        timeoutId = window.setTimeout(cycle, 2000);
+      }, 4000);
+    };
+    cycle();
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [query, selectedEmoji, oneWord, longform, sortBy, minLikes, minReplies, timeBucket, timePattern]);
 
   const toggleEmoji = (emoji: string) => {
     setSelectedEmoji((curr) => (curr === emoji ? null : emoji));
@@ -167,18 +208,22 @@ export default function Home() {
                 onClick: () => setQuery((q) => (q === '$' ? '' : '$')),
               },
             ];
-            return buttons.map((b) => (
+            return buttons.map((b, idx) => (
               <button
                 key={b.label}
                 onClick={b.onClick}
-                className={`px-3 py-1 rounded-full border ${b.active ? 'bg-foreground text-background' : ''}`}
+                className={`relative px-3 py-1 rounded-full border`}
                 aria-pressed={b.active}
               >
+                <HintBorder active={!hasActiveFilters && hintTarget?.group === 'suggestions' && hintTarget.index === idx} />
                 {b.label}
               </button>
             ));
           })()}
         </div>
+
+        {/* stack separator */}
+        <div className="my-3 border-t border-foreground/15" />
 
         {/* Viral vibe filters */}
         <div className="flex flex-wrap gap-2 mb-3 text-sm">
@@ -190,9 +235,10 @@ export default function Home() {
                 return next;
               })
             }
-            className={`px-3 py-1 rounded-full border ${oneWord ? 'bg-foreground text-background' : ''}`}
+            className={`relative px-3 py-1 rounded-full border`}
             aria-pressed={oneWord}
           >
+            <HintBorder active={!hasActiveFilters && hintTarget?.group === 'vibe' && hintTarget.index === 0} />
             One-word
           </button>
           <button
@@ -203,9 +249,10 @@ export default function Home() {
                 return next;
               })
             }
-            className={`px-3 py-1 rounded-full border ${longform ? 'bg-foreground text-background' : ''}`}
+            className={`relative px-3 py-1 rounded-full border`}
             aria-pressed={longform}
           >
+            <HintBorder active={!hasActiveFilters && hintTarget?.group === 'vibe' && hintTarget.index === 1} />
             Longform
           </button>
         </div>
@@ -214,16 +261,17 @@ export default function Home() {
         <div className="flex flex-wrap gap-2 mb-3 text-sm">
           {(
             [
-              { key: 'likes', label: 'Top Likes' },
-              { key: 'replies', label: 'Top Replies' },
+              { key: 'likes', label: 'Most Likes' },
+              { key: 'replies', label: 'Most Replies' },
             ] as const
-          ).map((o) => (
+          ).map((o, idx) => (
             <button
               key={o.key}
               onClick={() => setSortBy((curr) => (curr === o.key ? 'newest' : o.key))}
-              className={`px-3 py-1 rounded-full border ${sortBy === o.key ? 'bg-foreground text-background' : ''}`}
+              className={`relative px-3 py-1 rounded-full border`}
               aria-pressed={sortBy === o.key}
             >
+              <HintBorder active={!hasActiveFilters && hintTarget?.group === 'sort' && hintTarget.index === idx} />
               {o.label}
             </button>
           ))}
@@ -232,14 +280,14 @@ export default function Home() {
         {/* Quick picks for high engagement */}
         <div className="flex flex-wrap gap-2 mb-3 text-sm">
           <button
-            className={`px-3 py-1 rounded-full border ${minLikes !== null ? 'bg-foreground text-background' : ''}`}
+            className={`px-3 py-1 rounded-full border`}
             onClick={() => setMinLikes((v) => (v === null ? 100 : null))}
             aria-pressed={minLikes !== null}
           >
             ❤ 100+
           </button>
           <button
-            className={`px-3 py-1 rounded-full border ${minReplies !== null ? 'bg-foreground text-background' : ''}`}
+            className={`px-3 py-1 rounded-full border`}
             onClick={() => setMinReplies((v) => (v === null ? 10 : null))}
             aria-pressed={minReplies !== null}
           >
@@ -247,6 +295,9 @@ export default function Home() {
           </button>
           {/* Removed Top Recasts quick pick */}
         </div>
+
+        {/* stack separator */}
+        <div className="my-3 border-t border-foreground/15" />
 
         {/* Time-based collections (Pacific Time) */}
         <div className="flex flex-wrap gap-2 mb-3 text-sm">
@@ -256,13 +307,14 @@ export default function Home() {
               { key: 'morning', label: 'Morning grind' },
               { key: 'lunch', label: 'Lunch casts' },
             ] as const
-          ).map((b) => (
+          ).map((b, idx) => (
             <button
               key={b.key}
               onClick={() => setTimeBucket((curr) => (curr === b.key ? null : b.key))}
-              className={`px-3 py-1 rounded-full border ${timeBucket === b.key ? 'bg-foreground text-background' : ''}`}
+              className={`relative px-3 py-1 rounded-full border`}
               aria-pressed={timeBucket === b.key}
             >
+              <HintBorder active={!hasActiveFilters && hintTarget?.group === 'timeBucket' && hintTarget.index === idx} />
               {b.label}
             </button>
           ))}
@@ -277,19 +329,21 @@ export default function Home() {
               { key: 'elevenEleven', label: '11:11 club' },
               { key: 'duplicities', label: '2:22 • 3:33 • 4:44 • 5:55' },
             ] as const
-          ).map((b) => (
+          ).map((b, idx) => (
             <button
               key={b.key}
               onClick={() => setTimePattern((curr) => (curr === b.key ? null : b.key))}
-              className={`px-3 py-1 rounded-full border ${
-                timePattern === b.key ? 'bg-foreground text-background' : ''
-              }`}
+              className={`relative px-3 py-1 rounded-full border`}
               aria-pressed={timePattern === b.key}
             >
+              <HintBorder active={!hasActiveFilters && hintTarget?.group === 'timePattern' && hintTarget.index === idx} />
               {b.label}
             </button>
           ))}
         </div>
+
+        {/* stack separator */}
+        <div className="my-3 border-t border-foreground/15" />
 
         {/* Emoji suggestions */}
         <div className="mb-3">
@@ -298,9 +352,7 @@ export default function Home() {
             {topEmojis.map((e) => (
               <button
                 key={e.emoji}
-                className={`px-3 py-1 rounded-full border text-base ${
-                  selectedEmoji === e.emoji ? 'bg-foreground text-background' : ''
-                }`}
+                className={`px-3 py-1 rounded-full border text-base`}
                 onClick={() => toggleEmoji(e.emoji)}
                 title={`${e.count} uses`}
               >
@@ -369,7 +421,8 @@ export default function Home() {
                 setSortBy('newest');
                 setMinLikes(null);
                 setMinReplies(null);
-                // none
+                setTimeBucket(null);
+                setTimePattern(null);
               }}
             >
               Clear all
