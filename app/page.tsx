@@ -39,6 +39,11 @@ export default function Home() {
   const [suggestions, setSuggestions] = useState<{ cast: Cast; score: number }[]>([]);
   const [hintTarget, setHintTarget] = useState<{ group: 'suggestions' | 'vibe' | 'sort' | 'timeBucket' | 'timePattern'; index: number } | null>(null);
 
+  const chipClass = (active: boolean) =>
+    `relative px-3 py-1 rounded-full border transition-colors ${
+      active ? 'bg-foreground text-background' : 'hover:bg-foreground/10'
+    }`;
+
   const params = useMemo(() => {
     const usp = new URLSearchParams();
     if (query) usp.set('q', query);
@@ -212,7 +217,7 @@ export default function Home() {
               <button
                 key={b.label}
                 onClick={b.onClick}
-                className={`relative px-3 py-1 rounded-full border`}
+                className={chipClass(b.active)}
                 aria-pressed={b.active}
               >
                 <HintBorder active={!hasActiveFilters && hintTarget?.group === 'suggestions' && hintTarget.index === idx} />
@@ -235,7 +240,7 @@ export default function Home() {
                 return next;
               })
             }
-            className={`relative px-3 py-1 rounded-full border`}
+            className={chipClass(oneWord)}
             aria-pressed={oneWord}
           >
             <HintBorder active={!hasActiveFilters && hintTarget?.group === 'vibe' && hintTarget.index === 0} />
@@ -249,7 +254,7 @@ export default function Home() {
                 return next;
               })
             }
-            className={`relative px-3 py-1 rounded-full border`}
+            className={chipClass(longform)}
             aria-pressed={longform}
           >
             <HintBorder active={!hasActiveFilters && hintTarget?.group === 'vibe' && hintTarget.index === 1} />
@@ -268,7 +273,7 @@ export default function Home() {
             <button
               key={o.key}
               onClick={() => setSortBy((curr) => (curr === o.key ? 'newest' : o.key))}
-              className={`relative px-3 py-1 rounded-full border`}
+                className={chipClass(sortBy === o.key)}
               aria-pressed={sortBy === o.key}
             >
               <HintBorder active={!hasActiveFilters && hintTarget?.group === 'sort' && hintTarget.index === idx} />
@@ -280,14 +285,14 @@ export default function Home() {
         {/* Quick picks for high engagement */}
         <div className="flex flex-wrap gap-2 mb-3 text-sm">
           <button
-            className={`px-3 py-1 rounded-full border`}
+            className={chipClass(minLikes !== null)}
             onClick={() => setMinLikes((v) => (v === null ? 100 : null))}
             aria-pressed={minLikes !== null}
           >
             ❤ 100+
           </button>
           <button
-            className={`px-3 py-1 rounded-full border`}
+            className={chipClass(minReplies !== null)}
             onClick={() => setMinReplies((v) => (v === null ? 10 : null))}
             aria-pressed={minReplies !== null}
           >
@@ -311,7 +316,7 @@ export default function Home() {
             <button
               key={b.key}
               onClick={() => setTimeBucket((curr) => (curr === b.key ? null : b.key))}
-              className={`relative px-3 py-1 rounded-full border`}
+                className={chipClass(timeBucket === b.key)}
               aria-pressed={timeBucket === b.key}
             >
               <HintBorder active={!hasActiveFilters && hintTarget?.group === 'timeBucket' && hintTarget.index === idx} />
@@ -333,7 +338,7 @@ export default function Home() {
             <button
               key={b.key}
               onClick={() => setTimePattern((curr) => (curr === b.key ? null : b.key))}
-              className={`relative px-3 py-1 rounded-full border`}
+                className={chipClass(timePattern === b.key)}
               aria-pressed={timePattern === b.key}
             >
               <HintBorder active={!hasActiveFilters && hintTarget?.group === 'timePattern' && hintTarget.index === idx} />
@@ -352,7 +357,7 @@ export default function Home() {
             {topEmojis.map((e) => (
               <button
                 key={e.emoji}
-                className={`px-3 py-1 rounded-full border text-base`}
+                className={`${chipClass(selectedEmoji === e.emoji)} text-base`}
                 onClick={() => toggleEmoji(e.emoji)}
                 title={`${e.count} uses`}
               >
